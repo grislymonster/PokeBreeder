@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>iPhone Pokémon Breeder</title>
+<style>
+  body{font-family:Helvetica;background:#111;color:#eee;margin:0;padding:1rem}
+  select,button{width:100%;font-size:1.2rem;padding:.5rem;margin:.25rem 0}
+  img{width:100%;max-width:256px;display:block;margin:1rem auto}
+  pre{background:#222;padding:1rem;overflow:auto;font-size:.75rem}
+</style>
+</head>
+<body>
+
+<h1>⚡ iPhone Pokémon Breeder</h1>
+
+<select id="dad"></select>
+<select id="mom"></select>
+<button onclick="breed()">BREED</button>
+
+<img id="sprite" style="display:none">
+<pre id="jsonOut"></pre>
+
+<script>
+// 1) fill dropdowns ------------------------------------------------------------
+fetch('https://pokeapi.co/api/v2/pokemon?limit=151')
+  .then(r=>r.json())
+  .then(d=>{
+     d.results.forEach(p=>{
+       ['dad','mom'].forEach(id=>{
+         document.getElementById(id).innerHTML +=
+           `<option value="${p.name}">${p.name}</option>`;
+       });
+     });
+   });
+
+// 2) breed ---------------------------------------------------------------------
+async function breed(){
+  const momName = document.getElementById('mom').value;
+  const dadName = document.getElementById('dad').value;
+
+  const [mom,dad] = await Promise.all([
+    fetch(`https://pokeapi.co/api/v2/pokemon/${momName}`).then(r=>r.json()),
+    fetch(`https://pokeapi.co/api/v2/pokemon/${dadName}`).then(r=>r.json())
+  ]);
+
+  // stats
+  const h = (mom.height + dad.height)>>1;
+  const w = (mom.weight + dad.weight)>>1;
+  const xp = (mom.base_experience + dad.base_experience)>>1;
+  const type = (Math.random()<0.5? mom.types[0].type : dad.types[0].type);
+
+  // name
+  const babyName = dad.name.slice(0,3) + mom.name.slice(-2);
+
+  // 3) Perchance 2-D-Pokémon sprite -------------------------------------------
+  const prompt = encodeURIComponent(
+    `2-D Pokémon sprite, cute baby, ${type.name} type, small chibi style, 256x256 pixel-art`
+  );
+  const perchanceURL = `https://image-generation.perchance.org/api/generate?prompt=${prompt}&model= pokemon2d`; // keep space before "pokemon2d" – some forks need it
+  document.getElementById('sprite').src = perchanceURL;
+  document.getElementById('sprite').style.display = 'block';
+
+  // 4) JSON block ---------------------------------------------------------------
+  document.getElementById('jsonOut').textContent = JSON.stringify({
+    id: 10000 + Math.floor(Math.random()*9999),
+    name: babyName,
+    base_experience: xp,
+    height: h,
+    weight: w,
+    types: [{slot:1, type:{name:type.name, url:`https://pokeapi.co/api/v2/type/${type.name}/`}}],
+    abilities: [
+      {ability:{name:"genetic-link",url:"https://pokeapi.co/api/v2/ability/999/"}}
+    ],
+    lore: `A hybrid hatchling born from ${dad.name} and ${mom.name}. Its tiny body radiates ${type.name}-type energy.`
+  },null,2);
+}
+</script>
+</body>
+</html>
